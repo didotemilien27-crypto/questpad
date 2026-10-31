@@ -161,7 +161,7 @@ main{display:flex;flex-direction:column;gap:20px;min-width:0}
 <body>
 <header>
   <div class="logo">Questpad<small>Chaque tâche fait grandir ton compagnon.</small></div>
-  <div style="display:flex;gap:10px"><button class="glass theme" id="cfg" aria-label="Réglages">⚙️</button><button class="glass theme" id="theme" aria-label="Changer de thème">🌙</button></div>
+  <div style="display:flex;gap:10px;align-items:center"><button class="go" id="install" style="padding:11px 16px;font-size:.9rem" hidden>📲 Installer l’app</button><button class="glass theme" id="cfg" aria-label="Réglages">⚙️</button><button class="glass theme" id="theme" aria-label="Changer de thème">🌙</button></div>
 </header>
 
 <div class="wrap">
@@ -491,6 +491,18 @@ function checkDue() {
 setInterval(() => { checkDue(); if (!editing) renderTasks(); }, 30000);
 document.addEventListener('visibilitychange', checkDue);
 addEventListener('keydown', e => { if (!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && e.key === 'n') { e.preventDefault(); $('newText').focus(); } });
+
+/* ---------- Bouton d'installation ---------- */
+let dip = null;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if (!standalone()) $('install').hidden = false;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); dip = e; });
+addEventListener('appinstalled', () => { dip = null; $('install').hidden = true; toast('Questpad est installée 🎉'); });
+$('install').onclick = async () => {
+  if (dip) { dip.prompt(); await dip.userChoice; dip = null; }
+  else toast(ios ? 'Appuie sur Partager puis « Sur l’écran d’accueil »' : 'Ouvre le menu ⋮ du navigateur puis « Installer l’application »');
+};
 
 QP.get = () => S;
 QP.syncState = (st, mail) => {
