@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<!--
+QUESTPAD – un seul fichier. Mets-le sur GitHub sous le nom index.html.
+
+PUBLIER : dépôt GitHub > Settings > Pages > Deploy from a branch > main / root.
+          URL : https://TON-PSEUDO.github.io/NOM-DU-DEPOT/
+TESTER EN LOCAL : python3 -m http.server 8000 puis http://localhost:8000
+
+COMPTES + SYNCHRO MULTI-APPAREILS (Firebase, gratuit) :
+ 1. console.firebase.google.com > Ajouter un projet.
+ 2. Authentication > activer « Adresse e-mail/Mot de passe ».
+ 3. Authentication > Paramètres > Domaines autorisés : ajouter TON-PSEUDO.github.io
+ 4. Firestore Database > créer, puis onglet Règles, coller et publier :
+      rules_version = '2';
+      service cloud.firestore { match /databases/{db}/documents {
+        match /users/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; }
+      } }
+ 5. Paramètres du projet > Tes applications > Web : copie la config dans l'objet « cfg » vers la fin de ce fichier.
+ 6. Dans l'app : ⚙️ > Compte > créer un compte, puis même e-mail sur tes autres appareils.
+
+RAPPELS : ⚙️ > Rappels. Ils se déclenchent quand l'app est ouverte ou en arrière-plan dans le navigateur.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Questpad – tes tâches, ton compagnon</title>
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#efe3ff;--bg2:#d6f3e6;--bg3:#ffe0cc;
+  --ink:#2a2540;--mute:#6b6585;
+  --glass:rgba(255,255,255,.58);--edge:rgba(255,255,255,.85);
+  --shadow:0 12px 40px rgba(90,60,150,.16);
+  --acc:#7c5cff;--acc2:#ff6fae;
+  --easy:#bdeed3;--medium:#ffe58f;--hard:#ffb5c4;--paper:#3a3320;
+  --f:'Bricolage Grotesque',system-ui,sans-serif;--hand:'Caveat','Segoe Print',cursive;
+}
+[data-theme=dark]{
+  --bg1:#17122e;--bg2:#0e2a2f;--bg3:#2a1830;
+  --ink:#f1edff;--mute:#a7a1c8;
+  --glass:rgba(44,36,80,.55);--edge:rgba(255,255,255,.12);
+  --shadow:0 12px 40px rgba(0,0,0,.45);
+  --easy:#9fdcb9;--medium:#f2d36b;--hard:#f0959f;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-padding-top:16px}
+body{font-family:var(--f);color:var(--ink);min-height:100vh;
+  background:radial-gradient(60% 50% at 10% 0%,var(--bg1),transparent 70%),
+             radial-gradient(50% 50% at 100% 20%,var(--bg2),transparent 70%),
+             radial-gradient(60% 60% at 40% 100%,var(--bg3),transparent 70%),var(--bg1);
+  background-attachment:fixed;padding:18px;
+  padding-top:max(18px,env(safe-area-inset-top));padding-bottom:max(18px,env(safe-area-inset-bottom))}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:10px}
+.glass{background:var(--glass);border:1px solid var(--edge);border-radius:26px;box-shadow:var(--shadow);
+  backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
+header{max-width:1100px;margin:0 auto 20px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:800;font-size:1.6rem;letter-spacing:-.03em}
+.logo small{display:block;font-weight:400;font-size:.8rem;color:var(--mute);letter-spacing:0}
+.theme{width:46px;height:46px;border-radius:50%;font-size:1.2rem;display:grid;place-items:center}
+.wrap{max-width:1100px;margin:auto;display:grid;grid-template-columns:330px 1fr;gap:22px;align-items:start}
+aside{position:sticky;top:16px;padding:24px;display:flex;flex-direction:column;gap:18px;text-align:center}
+.pet{position:relative;width:170px;height:170px;margin:6px auto 0;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),var(--glass) 70%);
+  box-shadow:inset -8px -10px 22px rgba(124,92,255,.18),inset 8px 8px 18px rgba(255,255,255,.6),0 14px 30px rgba(124,92,255,.2)}
+[data-theme=dark] .pet{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.18),transparent 70%);
+  box-shadow:inset -8px -10px 22px rgba(0,0,0,.35),0 14px 30px rgba(0,0,0,.35)}
+.pet .body{font-size:92px;line-height:1;animation:float 3.6s ease-in-out infinite}
+.pet .head{position:absolute;top:-22px;left:50%;font-size:50px;transform:translateX(-50%) rotate(-10deg)}
+.pet.bounce .body{animation:bounce .7s}
+.pet.aura::after{content:"";position:absolute;inset:-10px;border-radius:50%;z-index:-1;
+  background:conic-gradient(#ff6fae,#ffd36f,#6fe3a5,#6fb7ff,#b18cff,#ff6fae);filter:blur(10px);opacity:.7}
+.gear{display:flex;gap:8px;justify-content:center;min-height:36px;font-size:1.5rem}
+h2{font-size:1.15rem;font-weight:800}
+.lvl{font-size:2.3rem;font-weight:800;letter-spacing:-.04em;line-height:1}
+.name{color:var(--mute);font-size:.9rem}
+.bar{height:16px;border-radius:99px;background:rgba(124,92,255,.15);overflow:hidden;box-shadow:inset 0 2px 5px rgba(0,0,0,.12)}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .7s cubic-bezier(.3,1.3,.5,1)}
+.xpline{display:flex;justify-content:space-between;font-size:.85rem;color:var(--mute);margin-top:6px}
+.next{font-size:.85rem;color:var(--mute);line-height:1.4}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:12px;border-radius:18px;background:rgba(124,92,255,.1)}
+.stat b{display:block;font-size:1.4rem}.stat span{font-size:.8rem;color:var(--mute)}
+.rw{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rw div{padding:8px 2px;border-radius:14px;background:rgba(124,92,255,.08);font-size:1.5rem;line-height:1.1}
+.rw small{display:block;font-size:.68rem;color:var(--mute)}
+.rw .lock{filter:grayscale(1);opacity:.4}
+main{display:flex;flex-direction:column;gap:20px;min-width:0}
+.add{padding:18px;display:flex;flex-direction:column;gap:14px}
+.add input{width:100%;padding:15px 18px;border-radius:16px;border:1px solid var(--edge);background:rgba(255,255,255,.35);font-size:1.05rem}
+[data-theme=dark] .add input{background:rgba(0,0,0,.25)}
+.add input::placeholder{color:var(--mute)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.chip{padding:10px 14px;border-radius:99px;font-weight:600;font-size:.9rem;border:2px solid transparent;
+  background:rgba(124,92,255,.1);transition:transform .15s}
+.chip:active{transform:scale(.95)}
+.chip[aria-pressed=true]{border-color:var(--ink);background:var(--c)}
+.chip.easy{--c:var(--easy)}.chip.medium{--c:var(--medium)}.chip.hard{--c:var(--hard)}
+.chip[aria-pressed=true]{color:var(--paper)}
+.go{padding:13px 24px;border-radius:99px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--acc),var(--acc2));
+  box-shadow:0 8px 20px rgba(124,92,255,.35);transition:transform .15s}
+.go:hover{transform:translateY(-2px)}.go:active{transform:scale(.96)}
+.filters{display:flex;gap:6px}
+.filters .chip{padding:8px 14px}
+.notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:22px;padding:6px 4px 30px}
+.note{position:relative;min-height:190px;padding:26px 18px 14px;border-radius:6px 6px 18px 6px;color:var(--paper);
+  background:var(--c);transform:rotate(var(--r));display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 2px 3px rgba(0,0,0,.12),0 14px 24px rgba(60,40,90,.2);transition:transform .25s,opacity .3s}
+.note:hover{transform:rotate(0) translateY(-4px) scale(1.02);z-index:2}
+.note.easy{--c:var(--easy)}.note.medium{--c:var(--medium)}.note.hard{--c:var(--hard)}
+.note::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:22px;transform:translateX(-50%) rotate(-2deg);
+  background:rgba(255,255,255,.55);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.note.pop{animation:pop .5s cubic-bezier(.3,1.5,.5,1)}
+.note.done{opacity:.6}.note.done .txt{text-decoration:line-through;text-decoration-thickness:2px}
+.txt{font-family:var(--hand);font-size:1.5rem;line-height:1.15;font-weight:600;flex:1;word-break:break-word}
+.note textarea{font-family:var(--hand);font-size:1.4rem;width:100%;min-height:80px;border:2px dashed rgba(0,0,0,.3);border-radius:8px;background:rgba(255,255,255,.4);padding:6px;resize:vertical}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tag{font-size:.75rem;font-weight:800;padding:4px 9px;border-radius:99px;background:rgba(0,0,0,.1)}
+.acts{display:flex;gap:4px}
+.acts button{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.5);font-size:1rem;transition:transform .15s}
+.acts button:hover{transform:scale(1.15)}
+.acts .ok{background:var(--paper);color:#fff;font-weight:800}
+.note.done .ok{background:#2e9e66}
+.empty{grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--mute);line-height:1.6}
+.empty big{display:block;font-size:3rem}
+.fx{position:fixed;pointer-events:none;font-weight:800;font-size:1.4rem;color:var(--acc);z-index:50;animation:rise 1s forwards;
+  text-shadow:0 2px 8px rgba(255,255,255,.8)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+.veil{position:fixed;inset:0;z-index:70;display:none;place-items:center;background:rgba(20,10,50,.5);padding:20px}
+.veil.on{display:grid}
+.modal{max-width:380px;padding:30px;text-align:center;animation:pop .6s cubic-bezier(.3,1.5,.5,1);background:var(--glass)}
+.modal .big{font-size:4.5rem}.modal h3{font-size:2rem;letter-spacing:-.03em;margin:6px 0}
+.modal p{color:var(--mute);margin-bottom:6px}.modal .go{margin-top:16px}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--mute)}
+.add .fld input,.add select,.cfg input{width:100%;padding:10px 12px;font-size:.95rem;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.35);color:var(--ink)}
+[data-theme=dark] .add select,[data-theme=dark] .cfg input{background:rgba(0,0,0,.25)}
+.add .row .fld{flex:1;min-width:150px}
+.due{font-size:.8rem;font-weight:700;opacity:.85}.due.over{color:#b3123c;opacity:1}
+.quest{text-align:left}.quest b{font-size:1rem}
+.cfg{max-width:420px;text-align:left;display:flex;flex-direction:column;gap:14px;max-height:92vh;overflow:auto}
+.sect{display:flex;flex-direction:column;gap:8px;font-size:.9rem}.sect p{color:var(--mute);margin:0}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,140px);z-index:80;padding:12px 18px;border-radius:99px;display:flex;gap:14px;align-items:center;background:var(--ink);color:var(--bg1);transition:transform .35s cubic-bezier(.3,1.4,.5,1);max-width:92vw}
+.toast.on{transform:translate(-50%,0)}.toast button{font-weight:800;color:var(--acc2)}
+@keyframes float{50%{transform:translateY(-7px)}}
+@keyframes bounce{30%{transform:scale(1.3) rotate(-8deg)}60%{transform:scale(.9) rotate(6deg)}}
+@keyframes pop{from{transform:scale(.6) rotate(-6deg);opacity:0}}
+@keyframes rise{to{transform:translateY(-70px);opacity:0}}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}aside{position:static}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Questpad<small>Chaque tâche fait grandir ton compagnon.</small></div>
+  <div style="display:flex;gap:10px"><button class="glass theme" id="cfg" aria-label="Réglages">⚙️</button><button class="glass theme" id="theme" aria-label="Changer de thème">🌙</button></div>
+</header>
+
+<div class="wrap">
+  <aside class="glass" aria-label="Ton compagnon">
+    <div class="pet" id="pet"><span class="head" id="petHead"></span><span class="body" id="petBody">🥚</span></div>
+    <div class="gear" id="gear"></div>
+    <div><div class="lvl" id="lvl">Niv. 1</div><div class="name" id="stage">Œuf</div></div>
+    <div>
+      <div class="bar" role="progressbar" aria-label="Progression vers le niveau suivant" id="barWrap"><i id="bar"></i></div>
+      <div class="xpline"><span id="xpCur">0 XP</span><span id="xpMax">100 XP</span></div>
+    </div>
+    <p class="next" id="next"></p>
+    <div class="stat quest" id="quest"></div>
+    <div class="stats">
+      <div class="stat"><b id="sXp">0</b><span>XP total</span></div>
+      <div class="stat"><b id="sDone">0</b><span>tâches finies</span></div>
+      <div class="stat"><b id="sStreak">0</b><span>jours de série 🔥</span></div>
+      <div class="stat"><b id="sBest">0</b><span>meilleure série</span></div>
+    </div>
+    <div><h2 style="margin-bottom:10px">Récompenses</h2><div class="rw" id="rewards"></div></div>
+    <div><h2 style="margin-bottom:10px">Succès</h2><div class="rw" id="achs"></div></div>
+  </aside>
+
+  <main>
+    <section class="glass add" aria-label="Nouvelle tâche">
+      <input id="newText" maxlength="120" placeholder="Qu’est-ce que tu dois faire ?" autocomplete="off">
+      <div class="row"><label class="fld">Échéance (rappel)<input type="datetime-local" id="newDue"></label>
+      <label class="fld">Répéter<select id="newRep"><option value="">Jamais</option><option value="daily">Chaque jour</option><option value="weekly">Chaque semaine</option></select></label></div>
+      <div class="row">
+        <div class="seg" id="diffPick">
+          <button class="chip easy" data-d="easy" aria-pressed="true">Facile · 10 XP</button>
+          <button class="chip medium" data-d="medium" aria-pressed="false">Moyen · 25 XP</button>
+          <button class="chip hard" data-d="hard" aria-pressed="false">Difficile · 50 XP</button>
+        </div>
+        <button class="go" id="addBtn">Coller la note</button>
+      </div>
+    </section>
+    <div class="filters" id="filters">
+      <button class="chip" data-f="all" aria-pressed="true">Toutes</button>
+      <button class="chip" data-f="todo" aria-pressed="false">À faire</button>
+      <button class="chip" data-f="done" aria-pressed="false">Terminées</button>
+    </div>
+    <section class="notes" id="notes" aria-live="polite"></section>
+  </main>
+</div>
+
+<canvas id="confetti"></canvas>
+<div class="toast" id="toast" role="status"></div>
+<div class="veil" id="cfgVeil" role="dialog" aria-modal="true" aria-labelledby="cfgT"><div class="glass modal cfg">
+  <h3 id="cfgT" style="font-size:1.5rem;margin:0">Réglages</h3>
+  <label class="fld">Nom du compagnon<input id="petName" maxlength="14"></label>
+  <div class="sect"><b>☁️ Compte et synchronisation</b><p id="syncMsg"></p>
+    <div id="authBox" class="sect"><input id="email" type="email" placeholder="E-mail" autocomplete="username"><input id="pw" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+    <div class="row"><button class="chip" id="bIn">Se connecter</button><button class="chip" id="bUp">Créer un compte</button></div></div>
+    <button class="chip" id="bOut" hidden>Se déconnecter</button></div>
+  <div class="sect"><b>🔔 Rappels</b><button class="chip" id="bNotif">Activer les rappels</button></div>
+  <div class="row"><button class="chip" id="bSnd" aria-pressed="true">🔊 Sons</button><button class="chip" id="bExp">Exporter</button><button class="chip" id="bImp">Importer</button><input type="file" id="fImp" accept="application/json" hidden></div>
+  <button class="go" id="cfgOk">Fermer</button>
+</div></div>
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="glass modal"><div class="big" id="mIcon"></div><h3 id="mTitle"></h3><p id="mText"></p><button class="go" id="mOk">Continuer</button></div>
+</div>
+
+<script>
+const KEY = 'questpad.v1';
+const DIFF = { easy:{label:'Facile',pts:10}, medium:{label:'Moyen',pts:25}, hard:{label:'Difficile',pts:50} };
+const STAGES = [[1,'🥚','Œuf'],[3,'🐣','Poussin'],[5,'🐥','Plumeau'],[8,'🦊','Renard'],[12,'🦄','Licorne'],[16,'🐉','Dragon']];
+const GEAR = [[2,'😎','Lunettes','badge'],[4,'🎩','Haut-de-forme','head'],[6,'🧣','Écharpe','badge'],[9,'👑','Couronne','head'],[13,'🪄','Baguette','badge'],[18,'🌈','Aura arc-en-ciel','aura']];
+
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const rot = id => ((parseInt(id.slice(-3), 36) % 7) - 3) * 0.9;
+
+const QP = window.QP = {}, QGOAL = 3, QBONUS = 50;
+const DEF = () => ({ name: 'Mochi', streak: 0, best: 0, lastDay: '', hardDone: 0, ach: [], quest: { day: '', prog: 0, claimed: false }, mute: false, updated: 0, notified: {} });
+const ACH = [['first','🌱','Première tâche',s=>s.done>=1],['ten','🔟','10 tâches',s=>s.done>=10],['hard','💪','5 difficiles',s=>s.hardDone>=5],
+  ['s3','🔥','Série de 3',s=>s.best>=3],['s7','🏔️','Série de 7',s=>s.best>=7],['l5','⭐','Niveau 5',s=>level(s.xp).l>=5]];
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && Array.isArray(d.tasks)) return Object.assign(DEF(), d); } catch (e) {}
+  return { tasks: [
+    { id: uid(), text: 'Boire un grand verre d’eau', diff: 'easy', done: false },
+    { id: uid(), text: 'Répondre aux mails en retard', diff: 'medium', done: false },
+    { id: uid(), text: 'Terminer le projet important', diff: 'hard', done: false }
+  ], xp: 0, done: 0, theme: null, ...DEF() };
+}
+function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} if (QP.push) QP.push(S); }
+let S = load(), pick = 'easy', filter = 'all', editing = null, lastAdded = null;
+
+/* ---------- Niveaux ---------- */
+const need = l => 100 + 50 * (l - 1);
+function level(xp) { let l = 1; while (xp >= need(l)) { xp -= need(l); l++; } return { l, cur: xp, max: need(l) }; }
+const stageFor = l => STAGES.filter(s => s[0] <= l).pop();
+
+/* ---------- Rendu du compagnon ---------- */
+function renderHero(animate) {
+  const { l, cur, max } = level(S.xp), st = stageFor(l);
+  const owned = GEAR.filter(g => g[0] <= l);
+  const hat = owned.filter(g => g[3] === 'head').pop();
+  $('petBody').textContent = st[1];
+  $('petHead').textContent = hat ? hat[1] : '';
+  $('pet').classList.toggle('aura', owned.some(g => g[3] === 'aura'));
+  $('gear').innerHTML = owned.filter(g => g[3] === 'badge').map(g => `<span title="${g[2]}">${g[1]}</span>`).join('');
+  $('lvl').textContent = 'Niveau ' + l;
+  $('stage').textContent = S.name + ' · ' + st[2];
+  $('bar').style.width = Math.round(cur / max * 100) + '%';
+  $('barWrap').setAttribute('aria-valuenow', Math.round(cur / max * 100));
+  $('xpCur').textContent = cur + ' XP';
+  $('xpMax').textContent = max + ' XP';
+  $('sXp').textContent = S.xp;
+  $('sDone').textContent = S.done; $('sStreak').textContent = liveStreak(); $('sBest').textContent = S.best;
+  const q = S.quest.day === today() ? S.quest : { prog: 0, claimed: false };
+  $('quest').innerHTML = `<b>${q.claimed ? '✅' : '🎯'} Quête du jour</b><span>Terminer ${QGOAL} tâches : ${Math.min(q.prog, QGOAL)}/${QGOAL} (+${QBONUS} XP)</span>`;
+  $('achs').innerHTML = ACH.map(a => `<div class="${S.ach.includes(a[0]) ? '' : 'lock'}" title="${a[2]}">${a[1]}<small>${a[2]}</small></div>`).join('');
+  const nxt = [...GEAR.map(g => [g[0], g[1] + ' ' + g[2]]), ...STAGES.slice(1).map(s => [s[0], s[1] + ' ' + s[2]])]
+    .filter(r => r[0] > l).sort((a, b) => a[0] - b[0])[0];
+  $('next').textContent = nxt ? `Prochaine surprise au niveau ${nxt[0]} : ${nxt[1]}` : 'Tu as tout débloqué, légende !';
+  $('rewards').innerHTML = [...GEAR, ...STAGES.slice(1)].sort((a, b) => a[0] - b[0])
+    .map(r => `<div class="${r[0] <= l ? '' : 'lock'}" title="${r[2]}">${r[1]}<small>Niv. ${r[0]}</small></div>`).join('');
+  if (animate) { const p = $('pet'); p.classList.remove('bounce'); void p.offsetWidth; p.classList.add('bounce'); }
+}
+
+/* ---------- Rendu des notes ---------- */
+function renderTasks() {
+  const list = S.tasks.filter(t => filter === 'all' || (filter === 'done') === t.done);
+  if (!list.length) {
+    $('notes').innerHTML = `<div class="empty"><big>${filter === 'done' ? '🏆' : '📝'}</big>${
+      filter === 'done' ? 'Aucune tâche terminée pour l’instant.<br>Valide une note pour gagner de l’XP.'
+      : 'Aucune note ici.<br>Écris une tâche ci-dessus pour nourrir ton compagnon.'}</div>`;
+    return;
+  }
+  $('notes').innerHTML = list.map(t => {
+    const d = DIFF[t.diff], isEdit = editing === t.id;
+    const body = isEdit
+      ? `<textarea id="editText" maxlength="120" aria-label="Modifier la tâche">${esc(t.text)}</textarea>`
+      : `<p class="txt">${esc(t.text)}</p>`;
+    const acts = isEdit
+      ? `<button data-a="save" aria-label="Enregistrer">💾</button><button data-a="cancel" aria-label="Annuler">✕</button>`
+      : `<button data-a="edit" aria-label="Modifier">✎</button><button data-a="del" aria-label="Supprimer">🗑</button>
+         <button class="ok" data-a="toggle" aria-label="${t.done ? 'Rouvrir la tâche' : 'Terminer la tâche'}">${t.done ? '↺' : '✓'}</button>`;
+    return `<article class="note ${t.diff} ${t.done ? 'done' : ''} ${t.id === lastAdded ? 'pop' : ''}" data-id="${t.id}" style="--r:${rot(t.id)}deg">
+      ${body}${dueTag(t)}<div class="meta"><span class="tag">${d.label} · ${d.pts} XP</span><div class="acts">${acts}</div></div></article>`;
+  }).join('');
+  lastAdded = null;
+  if (editing) { const ta = $('editText'); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+const renderAll = () => { renderHero(); renderTasks(); save(); };
+
+/* ---------- Actions ---------- */
+function addTask() {
+  const text = $('newText').value.trim();
+  if (!text) { $('newText').focus(); return; }
+  const t = { id: uid(), text, diff: pick, done: false, due: $('newDue').value, rep: $('newRep').value };
+  if (t.rep && !t.due) t.due = localISO(Date.now() + (t.rep === 'daily' ? 864e5 : 6048e5));
+  S.tasks.unshift(t); lastAdded = t.id;
+  $('newText').value = ''; $('newDue').value = ''; $('newRep').value = ''; $('newText').focus();
+  renderAll();
+}
+const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const liveStreak = () => [today(), today(new Date(Date.now() - 864e5))].includes(S.lastDay) ? S.streak : 0;
+const localISO = ms => new Date(ms - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+const fmtDue = d => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const dueTag = t => t.due ? `<span class="due ${!t.done && new Date(t.due) < new Date() ? 'over' : ''}">📅 ${fmtDue(t.due)}${t.rep ? ' 🔁' : ''}</span>` : '';
+function nextDue(d, rep) { let n = new Date(d).getTime(); const st = rep === 'daily' ? 864e5 : 6048e5; do n += st; while (n < Date.now()); return localISO(n); }
+function bump() {
+  const t = today(); if (S.lastDay === t) return;
+  S.streak = S.lastDay === today(new Date(Date.now() - 864e5)) ? S.streak + 1 : 1;
+  S.lastDay = t; S.best = Math.max(S.best, S.streak);
+}
+let tt;
+function toast(msg, label, fn) {
+  const el = $('toast'); el.innerHTML = '<span></span>'; el.firstChild.textContent = msg;
+  if (label) { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); el.classList.remove('on'); }; el.append(b); }
+  el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 6000);
+}
+let ac;
+function ding(notes = [660, 880]) {
+  if (S.mute) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    notes.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + i * .1;
+      o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.15, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .3);
+      o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + .35);
+    });
+  } catch (e) {}
+}
+function toggle(id, ev) {
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  const r = ev.target.closest('button').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top;
+  const before = level(S.xp).l; let gain = 0, crit = false;
+  if (!t.done) {
+    crit = Math.random() < .1; bump();
+    gain = Math.round(DIFF[t.diff].pts * (1 + Math.min(S.streak - 1, 10) * .05)) * (crit ? 2 : 1);
+    t.done = true; t.gain = gain; S.xp += gain; S.done++;
+    if (t.diff === 'hard') S.hardDone++;
+    if (S.quest.day !== today()) S.quest = { day: today(), prog: 0, claimed: false };
+    S.quest.prog++;
+    if (S.quest.prog >= QGOAL && !S.quest.claimed) { S.quest.claimed = true; S.xp += QBONUS; setTimeout(() => toast('🎯 Quête du jour accomplie ! +' + QBONUS + ' XP'), 900); }
+    if (t.rep && t.due) S.tasks.unshift({ id: uid(), text: t.text, diff: t.diff, done: false, rep: t.rep, due: nextDue(t.due, t.rep) });
+    ACH.filter(a => !S.ach.includes(a[0]) && a[3](S)).forEach(a => { S.ach.push(a[0]); setTimeout(() => toast('🏅 Succès : ' + a[2]), 1800); });
+  } else {
+    t.done = false; S.xp = Math.max(0, S.xp - (t.gain || DIFF[t.diff].pts)); S.done = Math.max(0, S.done - 1);
+    if (t.diff === 'hard') S.hardDone = Math.max(0, S.hardDone - 1);
+  }
+  const after = level(S.xp).l;
+  renderAll();
+  if (t.done) {
+    floatText((crit ? '✨ Critique ! ' : '') + '+' + gain + ' XP', x, y);
+    burst(x, y, t.diff === 'hard' ? 120 : t.diff === 'medium' ? 80 : 45);
+    ding(); renderHero(true);
+    if (after > before) setTimeout(() => levelUp(before, after), 500);
+  }
+}
+function levelUp(from, to) {
+  const unlocked = [...GEAR, ...STAGES.slice(1)].filter(r => r[0] > from && r[0] <= to);
+  $('mIcon').textContent = unlocked.length ? unlocked[unlocked.length - 1][1] : '⭐';
+  $('mTitle').textContent = 'Niveau ' + to + ' !';
+  $('mText').textContent = unlocked.length
+    ? 'Nouveau : ' + unlocked.map(u => u[1] + ' ' + u[2]).join(', ')
+    : 'Ton compagnon est de plus en plus fort.';
+  $('veil').classList.add('on'); $('mOk').focus(); ding([523, 659, 784, 1047]);
+  burst(innerWidth / 2, innerHeight / 3, 220);
+}
+function floatText(txt, x, y) {
+  const e = document.createElement('div');
+  e.className = 'fx'; e.textContent = txt;
+  e.style.left = (x - 30) + 'px'; e.style.top = (y - 10) + 'px';
+  document.body.appendChild(e); setTimeout(() => e.remove(), 1000);
+}
+
+/* ---------- Confettis ---------- */
+const cv = $('confetti'), cx = cv.getContext('2d');
+let parts = [], raf = null;
+const fit = () => { cv.width = innerWidth; cv.height = innerHeight; };
+addEventListener('resize', fit); fit();
+function burst(x, y, n) {
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const cols = ['#7c5cff', '#ff6fae', '#ffd36f', '#6fe3a5', '#6fb7ff'];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 9;
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, s: 5 + Math.random() * 6,
+      c: cols[i % cols.length], r: Math.random() * 6, vr: (Math.random() - .5) * .4, life: 90 + Math.random() * 40 });
+  }
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+function tick() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  parts = parts.filter(p => p.life > 0);
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy; p.vy += .3; p.vx *= .99; p.r += p.vr; p.life--;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.globalAlpha = Math.min(1, p.life / 30);
+    cx.fillStyle = p.c; cx.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .6); cx.restore();
+  }
+  raf = parts.length ? requestAnimationFrame(tick) : null;
+}
+
+/* ---------- Événements ---------- */
+$('addBtn').onclick = addTask;
+$('newText').onkeydown = e => { if (e.key === 'Enter') addTask(); };
+$('diffPick').onclick = e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  pick = b.dataset.d;
+  [...$('diffPick').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+};
+$('filters').onclick = e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  filter = b.dataset.f;
+  [...$('filters').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  renderTasks();
+};
+$('notes').onclick = e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const id = b.closest('.note').dataset.id, a = b.dataset.a;
+  if (a === 'toggle') toggle(id, e);
+  else if (a === 'del') { const i = S.tasks.findIndex(t => t.id === id), [gone] = S.tasks.splice(i, 1); renderAll(); toast('Tâche supprimée', 'Annuler', () => { S.tasks.splice(i, 0, gone); renderAll(); }); }
+  else if (a === 'edit') { editing = id; renderTasks(); }
+  else if (a === 'cancel') { editing = null; renderTasks(); }
+  else if (a === 'save') {
+    const v = $('editText').value.trim(), t = S.tasks.find(x => x.id === id);
+    if (v) t.text = v;
+    editing = null; renderAll();
+  }
+};
+$('notes').addEventListener('keydown', e => { if (e.key === 'Escape' && editing) { editing = null; renderTasks(); } });
+$('mOk').onclick = () => $('veil').classList.remove('on');
+$('veil').onclick = e => { if (e.target === $('veil')) $('veil').classList.remove('on'); };
+
+/* ---------- Thème ---------- */
+function applyTheme() {
+  const t = S.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = t;
+  $('theme').textContent = t === 'dark' ? '☀️' : '🌙';
+}
+$('theme').onclick = () => {
+  S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(); save();
+};
+
+/* ---------- Réglages, compte, rappels ---------- */
+const show = (id, on = true) => $(id).classList.toggle('on', on);
+const notifLabel = () => { $('bNotif').textContent = !('Notification' in window) ? 'Non supporté sur cet appareil' : Notification.permission === 'granted' ? '🔔 Rappels activés' : 'Activer les rappels'; };
+$('cfg').onclick = () => { $('petName').value = S.name; $('bSnd').setAttribute('aria-pressed', !S.mute); notifLabel(); show('cfgVeil'); };
+$('cfgOk').onclick = () => show('cfgVeil', false);
+$('cfgVeil').onclick = e => { if (e.target === $('cfgVeil')) show('cfgVeil', false); };
+$('petName').oninput = e => { S.name = e.target.value.trim() || 'Mochi'; renderAll(); };
+$('bSnd').onclick = () => { S.mute = !S.mute; $('bSnd').setAttribute('aria-pressed', !S.mute); save(); ding(); };
+$('bExp').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' })); a.download = 'questpad-' + today() + '.json'; a.click(); };
+$('bImp').onclick = () => $('fImp').click();
+$('fImp').onchange = async e => {
+  try { const d = JSON.parse(await e.target.files[0].text()); if (!Array.isArray(d.tasks)) throw 0; S = Object.assign(DEF(), d); applyTheme(); renderAll(); toast('Sauvegarde importée'); }
+  catch (x) { toast('Fichier invalide'); }
+};
+$('bNotif').onclick = async () => { if ('Notification' in window) { await Notification.requestPermission(); notifLabel(); checkDue(); } };
+async function notify(title, body) {
+  try { const r = await navigator.serviceWorker.ready; await r.showNotification(title, { body, icon: 'icon-192.png', tag: title }); }
+  catch (e) { try { new Notification(title, { body }); } catch (x) { toast(title); } }
+}
+function checkDue() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  let ch = false;
+  S.tasks.forEach(t => {
+    if (t.due && !t.done && !S.notified[t.id] && new Date(t.due) <= Date.now()) { S.notified[t.id] = 1; ch = true; notify('⏰ ' + t.text, 'Termine-la pour gagner ' + DIFF[t.diff].pts + ' XP !'); }
+  });
+  if (ch) save();
+}
+setInterval(() => { checkDue(); if (!editing) renderTasks(); }, 30000);
+document.addEventListener('visibilitychange', checkDue);
+addEventListener('keydown', e => { if (!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && e.key === 'n') { e.preventDefault(); $('newText').focus(); } });
+
+QP.get = () => S;
+QP.syncState = (st, mail) => {
+  const on = st === 'in', off = st === 'off';
+  $('authBox').hidden = on || off; $('bOut').hidden = !on;
+  $('syncMsg').textContent = off ? 'Synchronisation non configurée (voir README). Tes données restent sur cet appareil.'
+    : on ? 'Connecté : ' + mail + '. Tes appareils sont synchronisés.' : 'Connecte-toi pour synchroniser tes appareils.';
+};
+QP.syncState('off');
+QP.remote = str => {
+  let r; try { r = JSON.parse(str); } catch (e) { return; }
+  if (r.updated < S.updated) return 'local';
+  if (r.updated === S.updated) return;
+  r.theme = S.theme; S = Object.assign(DEF(), r);
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  renderHero(); renderTasks();
+};
+const cred = fn => async () => {
+  try { await fn($('email').value.trim(), $('pw').value); $('pw').value = ''; }
+  catch (e) { $('syncMsg').textContent = 'Échec : ' + (e.code || e.message).replace('auth/', ''); }
+};
+$('bIn').onclick = cred((m, p) => QP.login(m, p));
+$('bUp').onclick = cred((m, p) => QP.signup(m, p));
+$('bOut').onclick = () => QP.logout();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js');
+
+applyTheme(); renderAll();
+</script>
+<script type="module">
+/* ============ CONFIG FIREBASE (comptes + synchro) ============
+   Laisse 'COLLE_ICI' pour utiliser l'app sans compte (données sur l'appareil).
+   Voir le guide en haut du fichier. */
+const cfg = { apiKey: 'COLLE_ICI', authDomain: 'ton-projet.firebaseapp.com', projectId: 'ton-projet', appId: 'ton-app-id' };
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const QP = window.QP;
+if (cfg.apiKey && !cfg.apiKey.startsWith('COLLE')) {
+  const auth = getAuth(initializeApp(cfg)), db = getFirestore();
+  let ref = null, unsub = null, timer = null;
+  QP.login = (m, p) => signInWithEmailAndPassword(auth, m, p);
+  QP.signup = (m, p) => createUserWithEmailAndPassword(auth, m, p);
+  QP.logout = () => signOut(auth);
+  QP.push = s => {
+    clearTimeout(timer);
+    timer = setTimeout(() => ref && setDoc(ref, { state: JSON.stringify(s), updated: s.updated }).catch(console.error), 800);
+  };
+  onAuthStateChanged(auth, u => {
+    if (unsub) unsub();
+    if (!u) { ref = null; QP.syncState('out'); return; }
+    ref = doc(db, 'users', u.uid);
+    QP.syncState('in', u.email);
+    unsub = onSnapshot(ref, snap => {
+      if (!snap.exists()) return QP.push(QP.get());
+      if (snap.metadata.hasPendingWrites) return;
+      if (QP.remote(snap.data().state) === 'local') QP.push(QP.get());
+    });
+  });
+  QP.syncState('out');
+}
+</script>
+</body>
+</html>
